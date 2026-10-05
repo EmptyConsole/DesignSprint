@@ -1,7 +1,7 @@
 // Local API server for development. Vite proxies /api/* here (see vite.config.ts).
 // In production on Vercel, files in api/ are deployed as functions instead.
 import { createServer } from "node:http";
-import { POST as classify } from "../api/classify";
+import { POST as classify } from "../api/classify.js";
 
 try {
   process.loadEnvFile(".env");

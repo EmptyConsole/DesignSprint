@@ -41,13 +41,11 @@ export const classificationSchema = {
     confidence: { type: "string", enum: ["high", "medium", "low"] },
     steps: {
       type: "array",
-      maxItems: 3,
       description: "0-3 prep steps, imperative, max 5 words each, e.g. 'Rinse it out'.",
       items: { type: "string" },
     },
     parts: {
       type: "array",
-      maxItems: 4,
       description:
         "Only when components go to DIFFERENT places (e.g. lid vs cup). Otherwise empty.",
       items: {

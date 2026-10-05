@@ -1,8 +1,8 @@
 import OpenAI from "openai";
 import type { Response as OpenAIResponse, ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses";
 import type { Classification, ClassifyRequest, ClassifyResponse, LocationInfo, Source } from "../src/lib/types";
-import { buildInstructions } from "./prompt";
-import { classificationSchema } from "./schema";
+import { buildInstructions } from "./prompt.js";
+import { classificationSchema } from "./schema.js";
 
 const MAX_IMAGE_CHARS = 6_000_000; // ~4.5MB of base64, matches Vercel's body limit
 

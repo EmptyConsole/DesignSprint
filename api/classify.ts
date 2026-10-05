@@ -1,7 +1,7 @@
 // POST /api/classify — Web-standard handler. Vercel runs this file directly as
 // a serverless function; locally, server/dev.ts wraps it in a Node server.
 import OpenAI from "openai";
-import { classify, HttpError, parseRequest } from "../server/classify";
+import { classify, HttpError, parseRequest } from "../server/classify.js";
 
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
