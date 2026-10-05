@@ -13,10 +13,11 @@ import type { ClassifyResponse, LocationInfo } from "./lib/types";
 
 type Phase =
   | { name: "camera" }
-  | { name: "analyzing"; photo: string }
+  | { name: "analyzing"; photo: string; stage: Stage; guess?: string }
   | { name: "result"; photo: string; response: ClassifyResponse; locationLabel: string }
   | { name: "error"; photo: string; message: string };
 
+export type Stage = "identify" | "verify";
 export type LocStatus = "loading" | "ready" | "locating" | "error";
 
 const UNKNOWN: LocationInfo = { source: "ip", label: "Unknown location" };
@@ -85,12 +86,23 @@ export default function App() {
       inflight.current?.abort();
       const ctrl = new AbortController();
       inflight.current = ctrl;
-      setPhase({ name: "analyzing", photo });
+      setPhase({ name: "analyzing", photo, stage: "identify" });
 
       const loc = location ?? (await ipLookup.current) ?? UNKNOWN;
       try {
-        const response = await classifyPhoto({ image: photo, location: loc, advanced }, ctrl.signal);
+        let response = await classifyPhoto({ image: photo, location: loc, advanced }, ctrl.signal);
         if (ctrl.signal.aborted) return;
+        // Not fully sure? Automatically double-check against live local sources.
+        const r = response.result;
+        if (!advanced && !r.unclear && r.confidence !== "high") {
+          setPhase({ name: "analyzing", photo, stage: "verify", guess: r.item });
+          try {
+            response = await classifyPhoto({ image: photo, location: loc, advanced: true }, ctrl.signal);
+          } catch {
+            // Keep the fast answer if the double-check fails.
+          }
+          if (ctrl.signal.aborted) return;
+        }
         setPhase({ name: "result", photo, response, locationLabel: loc.label });
         if (!response.result.unclear) {
           const thumb = await makeThumb(photo).catch(() => "");
@@ -127,7 +139,14 @@ export default function App() {
         />
       )}
       {phase.name === "analyzing" && (
-        <AnalyzingScreen photo={phase.photo} location={location} advanced={advanced} onCancel={backToCamera} />
+        <AnalyzingScreen
+          photo={phase.photo}
+          location={location}
+          advanced={advanced}
+          stage={phase.stage}
+          guess={phase.guess}
+          onCancel={backToCamera}
+        />
       )}
       {phase.name === "result" && (
         <ResultScreen

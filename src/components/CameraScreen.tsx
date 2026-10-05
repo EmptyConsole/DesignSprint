@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, History, ImagePlus, LoaderCircle, LocateFixed, MapPin, Sparkles, Zap } from "lucide-react";
+import { ChevronDown, SwitchCamera, History, ImagePlus, LoaderCircle, LocateFixed, MapPin, Sparkles, Zap } from "lucide-react";
 import { Logo } from "./Logo";
 import { captureVideoFrame, fileToDataUrl } from "../lib/image";
 import type { LocationInfo } from "../lib/types";
@@ -26,6 +26,8 @@ export function CameraScreen(p: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [cam, setCam] = useState<CamState>("starting");
   const [flash, setFlash] = useState(false);
+  const [facing, setFacing] = useState<"environment" | "user">("environment");
+  const [canFlip, setCanFlip] = useState(false);
 
   useEffect(() => {
     if (!window.isSecureContext) return setCam("insecure");
@@ -33,11 +35,10 @@ export function CameraScreen(p: Props) {
 
     let stream: MediaStream | null = null;
     let cancelled = false;
+    const size = { width: { ideal: 1920 }, height: { ideal: 1080 } };
     navigator.mediaDevices
-      .getUserMedia({
-        audio: false,
-        video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } },
-      })
+      .getUserMedia({ audio: false, video: { facingMode: { exact: facing }, ...size } })
+      .catch(() => navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: facing }, ...size } }))
       .then(async (s) => {
         if (cancelled) return s.getTracks().forEach((t) => t.stop());
         stream = s;
@@ -45,6 +46,9 @@ export function CameraScreen(p: Props) {
         video.srcObject = s;
         await video.play().catch(() => {});
         setCam("live");
+        // Device labels/count are only reliable after permission is granted.
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        if (!cancelled) setCanFlip(devices.filter((d) => d.kind === "videoinput").length > 1);
       })
       .catch((err: DOMException) => setCam(err.name === "NotAllowedError" ? "blocked" : "unavailable"));
 
@@ -52,7 +56,7 @@ export function CameraScreen(p: Props) {
       cancelled = true;
       stream?.getTracks().forEach((t) => t.stop());
     };
-  }, []);
+  }, [facing]);
 
   const shoot = () => {
     const video = videoRef.current;
@@ -73,7 +77,7 @@ export function CameraScreen(p: Props) {
 
   return (
     <section className="camera">
-      <video ref={videoRef} className={`camera-feed ${cam === "live" ? "on" : ""}`} playsInline muted autoPlay />
+      <video ref={videoRef} className={`camera-feed ${cam === "live" ? "on" : ""} ${facing === "user" ? "mirror" : ""}`} playsInline muted autoPlay />
       {cam !== "live" && cam !== "starting" && <NoCamera state={cam} onPick={() => fileRef.current?.click()} />}
       {flash && <div className="flash" />}
 
@@ -120,6 +124,16 @@ export function CameraScreen(p: Props) {
           </span>
           <span className="mode-thumb" />
         </button>
+        {canFlip && cam === "live" && (
+          <button
+            className="icon-btn glass flip-btn"
+            onClick={() => setFacing((f) => (f === "environment" ? "user" : "environment"))}
+            aria-label="Flip camera"
+            title="Flip camera"
+          >
+            <SwitchCamera size={19} />
+          </button>
+        )}
         <p className="mode-help">
           {p.advanced ? "Checks official local sources · slower" : "Instant answer from local knowledge"}
         </p>

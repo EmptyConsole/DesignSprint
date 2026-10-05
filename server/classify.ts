@@ -101,12 +101,12 @@ export async function classify(req: ClassifyRequest): Promise<ClassifyResponse> 
         role: "user",
         content: [
           { type: "input_text", text: "How do I dispose of this here?" },
-          { type: "input_image", image_url: req.image, detail: "auto" },
+          { type: "input_image", image_url: req.image, detail: "high" },
         ],
       },
     ],
-    // web_search needs at least "low" effort; "minimal" keeps the fast path fast.
-    reasoning: { effort: advanced ? "low" : "minimal" },
+    // "minimal" was too error-prone at identifying items; "low" is the speed/accuracy sweet spot.
+    reasoning: { effort: "low" },
     text: {
       verbosity: "low",
       format: { type: "json_schema", name: "classification", strict: true, schema: classificationSchema },
@@ -132,7 +132,7 @@ export async function classify(req: ClassifyRequest): Promise<ClassifyResponse> 
   try {
     res = await openai.responses.create(params);
   } catch (err) {
-    // A different OPENAI_MODEL may not support "minimal" effort — retry with the model's default.
+    // A different OPENAI_MODEL may not support this reasoning effort — retry with the model's default.
     if (err instanceof OpenAI.BadRequestError && /reasoning|effort/i.test(err.message)) {
       const { reasoning: _omit, ...rest } = params;
       res = await openai.responses.create(rest);
